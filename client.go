@@ -150,7 +150,7 @@ func (c *client) Search(engine string, sqs *SearchQueryService) (sqr *SearchQuer
 		log.Println("query", string(b))
 	}
 
-	req, err := http.NewRequest("GET", u.String(), bytes.NewBuffer(b))
+	req, err := http.NewRequest(http.MethodPost, u.String(), bytes.NewBuffer(b))
 	if err != nil {
 		return
 	}

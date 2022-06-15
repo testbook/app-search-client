@@ -194,9 +194,9 @@ func (c *client) Search(engine string, sqs *SearchQueryService) (sqr *SearchQuer
 	}
 
 	if c.cache != nil && err == nil {
-		err = c.cache.Set(b, sqr)
+		c.cache.Set(b, sqr)
 		if c.isVerbose {
-			log.Println("cache set, err", err)
+			log.Println("cache set, err")
 		}
 		return
 	}

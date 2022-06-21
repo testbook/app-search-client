@@ -17,6 +17,7 @@ var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 type client struct {
 	url        url.URL
+	cache      Cache
 	apiKey     string
 	useragent  string
 	isVerbose  bool
@@ -55,7 +56,7 @@ type Client interface {
 	Close() error
 }
 
-func NewHTTPClient(conf HTTPConfig) (Client, error) {
+func NewHTTPClient(conf HTTPConfig, opts ...Option) (Client, error) {
 	if conf.UserAgent == "" {
 		conf.UserAgent = "AppSearchClient"
 	}
@@ -80,6 +81,10 @@ func NewHTTPClient(conf HTTPConfig) (Client, error) {
 			Transport: tr,
 		},
 		transport: tr,
+	}
+
+	for _, opt := range opts {
+		opt(c)
 	}
 	return c, nil
 }
@@ -149,6 +154,14 @@ func (c *client) Search(engine string, sqs *SearchQueryService) (sqr *SearchQuer
 	if c.isVerbose {
 		log.Println("query", string(b))
 	}
+	if c.cache != nil {
+		if exists := c.cache.Get(b, &sqr); exists {
+			if c.isVerbose {
+				log.Println("cache hit")
+			}
+			return
+		}
+	}
 
 	req, err := http.NewRequest(http.MethodPost, u.String(), bytes.NewBuffer(b))
 	if err != nil {
@@ -179,6 +192,15 @@ func (c *client) Search(engine string, sqs *SearchQueryService) (sqr *SearchQuer
 	if r.StatusCode != http.StatusNoContent && r.StatusCode != http.StatusOK || len(sqr.Errors) > 0 || len(sqr.Meta.Warnings) > 0 {
 		err = fmt.Errorf("%+v", sqr)
 	}
+
+	if c.cache != nil && err == nil {
+		c.cache.Set(b, sqr)
+		if c.isVerbose {
+			log.Println("cache set, err")
+		}
+		return
+	}
+
 	return
 }
 
